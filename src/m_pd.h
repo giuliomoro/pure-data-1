@@ -711,6 +711,7 @@ EXTERN int value_setfloat(t_symbol *s, t_float f);
 /* ------- GUI interface - functions to send strings to TK --------- */
 typedef void (*t_guicallbackfn)(t_gobj *client, t_glist *glist);
 
+EXTERN void sys_vguin(int selector, ...);
 EXTERN void sys_vgui(const char *fmt, ...);
 EXTERN void sys_gui(const char *s);
 EXTERN void sys_pretendguibytes(int n);

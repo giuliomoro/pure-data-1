@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include "m_pd.h"
 #include "g_canvas.h"
+#include "g_gui_selectors.h"
 
 #include "g_all_guis.h"
 #include <math.h>
@@ -39,7 +40,7 @@ static void hslider_draw_update(t_gobj *client, t_glist *glist)
         int r = text_xpix(&x->x_gui.x_obj, glist) + ((x->x_val + 50)/100);
         int ypos = text_ypix(&x->x_gui.x_obj, glist);
         t_canvas *canvas = glist_getcanvas(glist);
-        sys_vgui(".x%lx.c coords %lxKNOB %d %d %d %d\n",
+        sys_vguin(gui_slider_update,
                  canvas, x, r, ypos + IEMGUI_ZOOM(x),
                  r, ypos + x->x_gui.x_h - IEMGUI_ZOOM(x));
     }

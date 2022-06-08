@@ -890,6 +890,30 @@ static int sys_flushtogui(void)
     return (1);
 }
 
+#include "g_gui_selectors.h"
+
+void sys_vguin(int selector, ...)
+{
+    if (!sys_havegui())
+        return;
+    va_list ap;
+    char* str = NULL;
+    switch(selector)
+    {
+        // TODO: could be transformed in a lookup for better performance?
+    case gui_slider_update:
+        str = ".x%lx.c coords %lxKNOB %d %d %d %d\n";
+        break;
+    default:
+        fprintf(stderr, "Unknown gui_selector %d\n", selector);
+        break;;
+    }
+    if(!str)
+        return;
+    va_start(ap, selector);
+    sys_do_vgui(str, ap);
+}
+
 void glob_ping(t_pd *dummy)
 {
     INTER->i_waitingforping = 0;
