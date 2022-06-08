@@ -766,13 +766,16 @@ int sys_havegui(void)
     return (INTER->i_havegui);
 }
 
-void sys_vgui(const char *fmt, ...)
+// Only call this if GUI is enabled.
+// You need to call va_start() on ap before passing it in.
+// This function will then call va_end()
+static void sys_do_vgui(const char *fmt, va_list ap)
 {
     int msglen, bytesleft, headwas, nwrote;
-    va_list ap;
+    va_list aq;
+    // defensive copy in case we need to traverse the argument list twice
+    va_copy(aq, ap);
 
-    if (!sys_havegui())
-        return;
     if (!INTER->i_guibuf)
     {
         if (!(INTER->i_guibuf = malloc(GUI_ALLOCCHUNK)))
@@ -786,17 +789,15 @@ void sys_vgui(const char *fmt, ...)
     if (INTER->i_guihead > INTER->i_guisize - (GUI_ALLOCCHUNK/2)) {
             sys_trytogetmoreguibuf(INTER->i_guisize + GUI_ALLOCCHUNK);
     }
-    va_start(ap, fmt);
     msglen = vsnprintf(
         INTER->i_guibuf  + INTER->i_guihead,
         INTER->i_guisize - INTER->i_guihead,
         fmt, ap);
-    va_end(ap);
     if(msglen < 0)
     {
         fprintf(stderr,
             "Pd: buffer space wasn't sufficient for long GUI string\n");
-        return;
+        goto done;
     }
     if (msglen >= INTER->i_guisize - INTER->i_guihead)
     {
@@ -806,12 +807,10 @@ void sys_vgui(const char *fmt, ...)
             + (msglen > GUI_ALLOCCHUNK ? msglen : GUI_ALLOCCHUNK);
         sys_trytogetmoreguibuf(newsize);
 
-        va_start(ap, fmt);
         msglen2 = vsnprintf(
             INTER->i_guibuf  + INTER->i_guihead,
             INTER->i_guisize - INTER->i_guihead,
-            fmt, ap);
-        va_end(ap);
+            fmt, aq);
         if (msglen2 != msglen)
             bug("sys_vgui");
         if (msglen >= INTER->i_guisize - INTER->i_guihead)
@@ -833,6 +832,18 @@ void sys_vgui(const char *fmt, ...)
     }
     INTER->i_guihead += msglen;
     INTER->i_bytessincelastping += msglen;
+done:
+    va_end(ap);
+    va_end(aq);
+}
+
+void sys_vgui(const char* fmt, ...)
+{
+    va_list ap;
+    if (!sys_havegui())
+        return;
+    va_start(ap, fmt);
+    sys_do_vgui(fmt, ap);
 }
 
 void sys_gui(const char *s)
