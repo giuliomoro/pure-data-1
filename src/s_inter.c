@@ -891,12 +891,15 @@ static int sys_flushtogui(void)
 }
 
 #include "g_gui_selectors.h"
-
+#define ENABLE_TCL_GUI
+//#define ENABLE_L2ORK_GUI
 void sys_vguin(int selector, ...)
 {
     if (!sys_havegui())
         return;
     va_list ap;
+    // TODO: add runtime selection as well
+#ifdef ENABLE_TCL_GUI
     char* str = NULL;
     switch(selector)
     {
@@ -912,6 +915,36 @@ void sys_vguin(int selector, ...)
         return;
     va_start(ap, selector);
     sys_do_vgui(str, ap);
+    return;
+#endif // ENABLE_TCL_GUI
+#ifdef ENABLE_L2ORK_GUI
+    extern void gui_vmess(const char *sel, char *fmt, ...); //TODO: get implementation from PurrData
+    va_start(ap, selector);
+    switch(selector)
+    {
+    case gui_slider_update:
+        {
+            void* canvas = va_arg(ap, void*);
+            void* obj = va_arg(ap, void*);
+            int r = va_arg(ap, int);
+            int y1 = va_arg(ap, int);
+            r = va_arg(ap, int); // again
+            int y2 = va_arg(ap, int);
+            int x1 = va_arg(ap, int);
+            gui_vmess("gui_slider_update", "xxiiiiii",
+                canvas, obj,
+                r + 3, y1 + 2,
+                r + 3, y2 - 2,
+                x1, y1);
+        }
+        break;
+    default:
+        fprintf(stderr, "Unknown gui_selector %d\n", selector);
+        break;
+    }
+    va_end(ap);
+    return;
+#endif // ENABLE__GUI
 }
 
 void glob_ping(t_pd *dummy)

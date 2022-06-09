@@ -37,12 +37,14 @@ static void hslider_draw_update(t_gobj *client, t_glist *glist)
     t_hslider *x = (t_hslider *)client;
     if (glist_isvisible(glist))
     {
-        int r = text_xpix(&x->x_gui.x_obj, glist) + ((x->x_val + 50)/100);
+        int x1 = text_xpix(&x->x_gui.x_obj, glist);
+        int r = x1 + ((x->x_val + 50)/100);
         int ypos = text_ypix(&x->x_gui.x_obj, glist);
         t_canvas *canvas = glist_getcanvas(glist);
         sys_vguin(gui_slider_update,
                  canvas, x, r, ypos + IEMGUI_ZOOM(x),
-                 r, ypos + x->x_gui.x_h - IEMGUI_ZOOM(x));
+                 r, ypos + x->x_gui.x_h - IEMGUI_ZOOM(x),
+                 x1); // this is additional, needed by L2ORK_GUI
     }
 }
 
