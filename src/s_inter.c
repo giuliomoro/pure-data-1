@@ -1609,16 +1609,16 @@ static void glist_maybevis(t_glist *gl)
     }
 }
 
-int sys_startgui(const char *libdir)
+static void hideall()
 {
     t_canvas *x;
-    stderr_isatty = isatty(2);
     for (x = pd_getcanvaslist(); x; x = x->gl_next)
         canvas_vis(x, 0);
-    INTER->i_havegui = 1;
-    INTER->i_guihead = INTER->i_guitail = 0;
-    if (sys_do_startgui(libdir))
-        return (-1);
+}
+
+static void showall()
+{
+    t_canvas *x;
     for (x = pd_getcanvaslist(); x; x = x->gl_next)
         if (strcmp(x->gl_name->s_name, "_float_template") &&
             strcmp(x->gl_name->s_name, "_float_array_template") &&
@@ -1627,6 +1627,17 @@ int sys_startgui(const char *libdir)
         glist_maybevis(x);
         canvas_vis(x, 1);
     }
+}
+
+int sys_startgui(const char *libdir)
+{
+    stderr_isatty = isatty(2);
+    hideall();
+    INTER->i_havegui = 1;
+    INTER->i_guihead = INTER->i_guitail = 0;
+    if (sys_do_startgui(libdir))
+        return (-1);
+    showall();
     return (0);
 }
 
