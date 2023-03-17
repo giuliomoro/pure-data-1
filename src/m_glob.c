@@ -41,6 +41,7 @@ void glob_forgetpreferences(t_pd *dummy);
 void glob_open(t_pd *ignore, t_symbol *name, t_symbol *dir, t_floatarg f);
 void glob_fastforward(t_pd *ignore, t_floatarg f);
 void glob_settracing(void *dummy, t_float f);
+extern void sys_refreshgui();
 
 static void glob_helpintro(t_pd *dummy)
 {
@@ -187,6 +188,8 @@ void glob_init(void)
          gensym("fast-forward"), A_FLOAT, 0);
     class_addmethod(glob_pdobject, (t_method)glob_settracing,
          gensym("set-tracing"), A_FLOAT, 0);
+    class_addmethod(glob_pdobject, (t_method)sys_refreshgui,
+         gensym("refresh-gui"), 0);
 #if defined(__linux__) || defined(__FreeBSD_kernel__)
     class_addmethod(glob_pdobject, (t_method)glob_watchdog,
         gensym("watchdog"), 0);

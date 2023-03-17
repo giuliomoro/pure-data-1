@@ -1629,6 +1629,12 @@ static void showall()
     }
 }
 
+void sys_refreshgui()
+{
+    hideall();
+    showall();
+}
+
 int sys_startgui(const char *libdir)
 {
     stderr_isatty = isatty(2);
