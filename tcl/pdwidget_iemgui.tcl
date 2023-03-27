@@ -310,6 +310,53 @@ proc ::pdwidget::iemgui::config_radio {obj cnv args} {
 }
 
 ########################################################################
+# [hslider], [vslider]
+proc ::pdwidget::iemgui::create_slider {obj cnv posX posY args} {
+    set tag [::pdwidget::base_tag $obj]
+    $cnv create rectangle 0 0 0 0 -tags [list ${tag}] -outline {} -fill {} -width 0
+    $cnv create rectangle 0 0 0 0 -tags [list ${tag} ${tag}_BASE ${tag}_iolets]
+    $cnv create text 0 0 -anchor w -tags [list ${tag} ${tag}_label]
+    $cnv move $tag $posX $posY
+
+    ::pdwidget::widgetbehavior $obj config ::pdwidget::iemgui::config_slider
+    ::pdwidget::widgetbehavior $obj select ::pdwidget::iemgui::select
+    if { $args ne {} } {::pdwidget::iemgui::config_slider $obj $cnv {*}$args }
+}
+proc ::pdwidget::iemgui::config_slider {obj cnv args} {
+    set tag [::pdwidget::base_tag $obj]
+    set recreate_iolets 0
+
+    set zoom [::pd::canvas::get_zoom $cnv]
+    ::pdwidget::iemgui::_config_common $tag $cnv $args
+    foreach {k v} $args {
+        switch -exact -- $k {
+            default {
+            } "-bcolor" {
+                $cnv itemconfigure "${tag}_BASE" -fill $v
+            } "-fcolor" {
+                set activecolor $v
+            } "-size" {
+                set w [lindex $v 0]
+                set h [lindex $v 1]
+                foreach {x y} [$cnv coords "${tag}_BASE"] {break}
+                $cnv coords "${tag}_BASE" $x $y [expr $x + $w * $zoom] [expr $y + $h * $zoom]
+                set recreate_iolets 1
+            }
+        }
+    }
+    $cnv itemconfigure "${tag}_BASE" -width $zoom
+    $cnv create rectangle 0 0 0 0 -tags [list ${tag} ${tag}_KNOB]
+
+    if { $recreate_iolets } {
+        ## FIXXME cnv handling is ugly
+        set iolets [::pdwidget::get_iolets $obj $cnv inlet]
+        ::pdwidget::create_inlets $obj {*}$iolets
+        set iolets [::pdwidget::get_iolets $obj $cnv outlet]
+        ::pdwidget::create_outlets $obj {*}$iolets
+    }
+}
+
+########################################################################
 # [tgl]
 proc ::pdwidget::iemgui::create_toggle {obj cnv posX posY args} {
     set tag [::pdwidget::base_tag $obj]
@@ -392,6 +439,16 @@ proc ::pdwidget::radio::activate {obj state activecolor} {
     }
 }
 
+namespace eval ::pdwidget::slider:: { }
+proc ::pdwidget::slider::activate {obj a b c d activecolor} {
+    set tag "[::pdwidget::base_tag $obj]"
+    foreach cnv [::pdwidget::get_canvases $obj] {
+        # show (de)activation
+        $cnv coords "${tag}_KNOB" $a $b $c $d
+        $cnv itemconfigure "${tag}_KNOB" -width 3 -outline $activecolor
+    }
+}
+
 namespace eval ::pdwidget::bang:: { }
 proc ::pdwidget::bang::activate {obj state activecolor} {
     # LATER: have the timer work on the GUI side!
@@ -422,5 +479,6 @@ proc ::pdwidget::toggle::activate {obj state activecolor} {
 # register the new objects
 ::pdwidget::register bang ::pdwidget::iemgui::create_bang
 ::pdwidget::register canvas ::pdwidget::iemgui::create_canvas
+::pdwidget::register slider ::pdwidget::iemgui::create_slider
 ::pdwidget::register radio ::pdwidget::iemgui::create_radio
 ::pdwidget::register toggle ::pdwidget::iemgui::create_toggle

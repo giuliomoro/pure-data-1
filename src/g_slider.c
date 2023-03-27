@@ -28,13 +28,29 @@ static t_class *slider_class;
 /* forward declarations */
 static void slider_set(t_slider *x, t_floatarg f);
 
+/*
+typedef struct _slider
+{
+    t_iemgui x_gui;
+    int      x_pos;
+    int      x_val;
+    int      x_lin0_log1;
+    int      x_steady;
+    double   x_min;
+    double   x_max;
+    double   x_k;
+    t_float  x_fval;
+    t_iem_orientation x_orientation;
+} t_slider;
+*/
 /* widget helper functions */
 
 /* cannot use iemgui's default draw_iolets, because
  * - we have to deal with those stupid offsets,...
  * - we want to make sure that the iolets are below the KNOB (rather than the LABEL)
  */
-static void slider_draw_io(t_slider* x, t_glist* glist, int old_snd_rcv_flags)
+#define slider_draw_io 0
+static void slider_draw_iooo(t_slider* x, t_glist* glist, int old_snd_rcv_flags)
 {
     const int zoom = IEMGUI_ZOOM(x);
     t_canvas *canvas = glist_getcanvas(glist);
@@ -109,6 +125,16 @@ static void slider_knob_position(t_slider*x, t_glist *glist, int val, int *x0, i
 
 }
 
+static void slider_draw_activate(t_slider* x, t_glist* glist)
+{
+    int a, b, c, d;
+    int val = ((x->x_val + 50)/100);
+    slider_knob_position(x, glist, val, &a, &b, &c, &d);
+    pdgui_vmess("::pdwidget::slider::activate", "o iiii k", x
+        , a, b, c, d,
+        x->x_gui.x_fcol);
+}
+
 static void slider_draw_config(t_slider* x, t_glist* glist)
 {
     const int zoom = IEMGUI_ZOOM(x);
@@ -116,10 +142,8 @@ static void slider_draw_config(t_slider* x, t_glist* glist)
     t_iemgui *iemgui = &x->x_gui;
     int xpos = text_xpix(&x->x_gui.x_obj, glist);
     int ypos = text_ypix(&x->x_gui.x_obj, glist);
-    int val = ((x->x_val + 50)/100);
     int iow = IOWIDTH * zoom, ioh = IEM_GUI_IOHEIGHT * zoom;
     int lmargin = 0, rmargin = 0, tmargin = 0, bmargin = 0;
-    int a, b, c, d;
     char tag[128];
     t_atom fontatoms[3];
     SETSYMBOL(fontatoms+0, gensym(iemgui->x_font));
@@ -134,89 +158,33 @@ static void slider_draw_config(t_slider* x, t_glist* glist)
         tmargin = TMARGIN * zoom;
         bmargin = BMARGIN * zoom;
     }
-    slider_knob_position(x, glist, val, &a, &b, &c, &d);
-
-    sprintf(tag, "%lxBASE", x);
-    pdgui_vmess(0, "crs iiii", canvas, "coords", tag,
-        xpos - lmargin, ypos - tmargin,
-        xpos + x->x_gui.x_w + rmargin, ypos + x->x_gui.x_h + bmargin);
-    pdgui_vmess(0, "crs ri rk", canvas, "itemconfigure", tag,
-        "-width", zoom,
-        "-fill", x->x_gui.x_bcol);
-
-    sprintf(tag, "%lxKNOB", x);
-    pdgui_vmess(0, "crs iiii", canvas, "coords", tag,
-        a, b, c, d);
-    pdgui_vmess(0, "crs ri rk", canvas, "itemconfigure", tag,
-        "-width", 1 + 2 * zoom,
-        "-outline", x->x_gui.x_fcol);
-
-    sprintf(tag, "%lxLABEL", x);
-    pdgui_vmess(0, "crs ii", canvas, "coords", tag,
-        xpos + x->x_gui.x_ldx * zoom, ypos + x->x_gui.x_ldy * zoom);
-
-    pdgui_vmess(0, "crs rA rk", canvas, "itemconfigure", tag,
-        "-font", 3, fontatoms,
-        "-fill", (x->x_gui.x_fsf.x_selected ? IEM_GUI_COLOR_SELECTED : x->x_gui.x_lcol));
-    iemgui_dolabel(x, &x->x_gui, x->x_gui.x_lab, 1);
+    slider_draw_activate(x, glist);
 }
 
 static void slider_draw_new(t_slider *x, t_glist *glist)
 {
-    t_canvas *canvas = glist_getcanvas(glist);
-    char tag[128], tag_object[128];
-    char*tags[] = {tag_object, tag, "label", "text"};
-    sprintf(tag_object, "%lxOBJ", x);
+    const int zoom = IEMGUI_ZOOM(x);
+    pdgui_vmess("::pdwidget::create", "roc ii", "slider"
+        , x, glist_getcanvas(glist)
+        , text_xpix(&x->x_gui.x_obj, glist) / zoom
+        , text_ypix(&x->x_gui.x_obj, glist) / zoom
+        );
+    pdgui_vmess("::pdwidget::create_inlets" , "o i", x, 0);
+    pdgui_vmess("::pdwidget::create_outlets", "o i", x, 0);
 
-
-    sprintf(tag, "%lxBASE", x);
-    pdgui_vmess(0, "crr iiii rS", canvas, "create", "rectangle",
-         0, 0, 0, 0, "-tags", 2, tags);
-
-    sprintf(tag, "%lxKNOB", x);
-    pdgui_vmess(0, "crr iiii rS", canvas, "create", "rectangle",
-         0, 0, 0, 0, "-tags", 2, tags);
-
-    sprintf(tag, "%lxLABEL", x);
-    pdgui_vmess(0, "crr ii rs rS", canvas, "create", "text",
-         0, 0, "-anchor", "w", "-tags", 4, tags);
-
-    slider_draw_config(x, glist);
+    (*x->x_gui.x_draw)(x, x->x_gui.x_glist, IEM_GUI_DRAW_MODE_CONFIG);
     (*x->x_gui.x_draw)(x, x->x_gui.x_glist, IEM_GUI_DRAW_MODE_IO);
 }
 
 static void slider_draw_select(t_slider* x, t_glist* glist)
 {
-    t_canvas *canvas = glist_getcanvas(glist);
-    int col = IEM_GUI_COLOR_NORMAL, lcol = x->x_gui.x_lcol;
-    char tag[128];
-
-    if(x->x_gui.x_fsf.x_selected)
-        col = lcol = IEM_GUI_COLOR_SELECTED;
-
-    sprintf(tag, "%lxBASE", x);
-    pdgui_vmess(0, "crs rk", canvas, "itemconfigure", tag, "-outline", col);
-    sprintf(tag, "%lxLABEL", x);
-    pdgui_vmess(0, "crs rk", canvas, "itemconfigure", tag, "-fill", lcol);
+    pdgui_vmess("::pdwidget::select", "oi", x, x->x_gui.x_fsf.x_selected);
 }
 
-static void slider_draw_update(t_gobj *client, t_glist *glist)
+static void slider_draw_update(t_slider *x, t_glist *glist)
 {
-    t_slider *x = (t_slider *)client;
-    int a, b, c, d;
-    if (glist_isvisible(glist))
-    {
-        const int zoom = IEMGUI_ZOOM(x);
-        t_canvas *canvas = glist_getcanvas(glist);
-        int xpos = text_xpix(&x->x_gui.x_obj, glist);
-        int ypos = text_ypix(&x->x_gui.x_obj, glist);
-        int val = ((x->x_val + 50) / 100) * zoom;
-        char tag[128];
-        sprintf(tag, "%lxKNOB", x);
-
-        slider_knob_position(x, glist, val, &a, &b, &c, &d);
-        pdgui_vmess(0, "crs iiii", canvas, "coords", tag, a, b, c, d);
-    }
+    if(glist_isvisible(glist))
+        slider_draw_activate(x, glist);
 }
 
 
