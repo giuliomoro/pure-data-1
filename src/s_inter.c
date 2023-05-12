@@ -2196,6 +2196,21 @@ static int sys_do_startgui(const char *libdir)
 
     sys_init_fdpoll();
 
+    const char REMOTE_GUI_TAG[] = "REMOTE_GUI_";
+    char* existing_gui_host = NULL;
+    if(!strncmp(REMOTE_GUI_TAG, libdir, strlen(REMOTE_GUI_TAG)))
+    {
+        const unsigned int start = strlen(REMOTE_GUI_TAG);
+        for(unsigned int n = start; n < strlen(libdir); ++n)
+        {
+            if(':' == libdir[n])
+            {
+                existing_gui_host = strndup(libdir + start, n - start);
+                sys_guisetportnumber = atoi(libdir + n + 1);
+                printf("existing_gui_host: %s:%d\n", existing_gui_host, sys_guisetportnumber);
+            }
+        }
+    }
     if (sys_guisetportnumber)  /* GUI exists and sent us a port number */
     {
         int status;
@@ -2217,7 +2232,9 @@ static int sys_do_startgui(const char *libdir)
 
         /* get addrinfo list using hostname & port */
         status = addrinfo_get_list(&ailist,
-            LOCALHOST, sys_guisetportnumber, SOCK_STREAM);
+            existing_gui_host ? existing_gui_host : LOCALHOST, sys_guisetportnumber, SOCK_STREAM);
+        free(existing_gui_host);
+
         if (status != 0)
         {
             fprintf(stderr,
