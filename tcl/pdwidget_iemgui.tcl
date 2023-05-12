@@ -322,9 +322,20 @@ proc ::pdwidget::iemgui::create_slider {obj cnv posX posY args} {
     ::pdwidget::widgetbehavior $obj select ::pdwidget::iemgui::select
     if { $args ne {} } {::pdwidget::iemgui::config_slider $obj $cnv {*}$args }
 }
+proc ::pdwidget::iemgui::_slider_recreate_iolets { obj cnv iotag iolets } {
+    set tag [::pdwidget::base_tag $obj]
+    #$::pdwidget::IOWIDTH
+    #$::pdwidget::IHEIGHT
+    foreach {x0 y0 x1 y1} [$cnv coords ${tag}_BASE] {break;}
+    if { $iotag == {outlet} } {
+        #$cnv coords "${tag}_${iotag}" $x0 [expr $y0 - 2 ]  $x1 [expr $y0 + 1]
+    } {
+        #$cnv coords "${tag}_${iotag}" $x0 [expr $y1 + 1] $x1 [expr $y1 + 3]
+    }
+    #$obj $cnv inlet $inlets
+}
 proc ::pdwidget::iemgui::config_slider {obj cnv args} {
     set tag [::pdwidget::base_tag $obj]
-    set recreate_iolets 0
 
     set zoom [::pd::canvas::get_zoom $cnv]
     ::pdwidget::iemgui::_config_common $tag $cnv $args
@@ -340,19 +351,17 @@ proc ::pdwidget::iemgui::config_slider {obj cnv args} {
                 set h [lindex $v 1]
                 foreach {x y} [$cnv coords "${tag}_BASE"] {break}
                 $cnv coords "${tag}_BASE" $x $y [expr $x + $w * $zoom] [expr $y + $h * $zoom]
-                set recreate_iolets 1
             }
         }
     }
     $cnv itemconfigure "${tag}_BASE" -width $zoom
+    $cnv delete ${tag}_KNOB
     $cnv create rectangle 0 0 0 0 -tags [list ${tag} ${tag}_KNOB]
 
-    if { $recreate_iolets } {
-        ## FIXXME cnv handling is ugly
-        set iolets [::pdwidget::get_iolets $obj $cnv inlet]
-        ::pdwidget::create_inlets $obj {*}$iolets
-        set iolets [::pdwidget::get_iolets $obj $cnv outlet]
-        ::pdwidget::create_outlets $obj {*}$iolets
+    # this is unconditional because the default iolets are always wrong
+    foreach {type} [list inlet outlet] {
+        set iolets [::pdwidget::get_iolets $obj $cnv $type]
+        ::pdwidget::iemgui::_slider_recreate_iolets $obj $cnv $type {*}$iolets
     }
 }
 
