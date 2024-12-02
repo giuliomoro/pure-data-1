@@ -240,10 +240,7 @@ void dsp_tick(void);
        can be safely called from within the audio callback. */
 void sys_exit(int status)
 {
-#ifdef THREADED_IO
-    void sys_stopiothread();
     sys_stopiothread();
-#endif // THREADED_IO
     pthread_mutex_lock(&sched_mutex);
     if (SYS_QUIT_QUIT != sys_quit) {
         sys_exitcode = status;
