@@ -148,9 +148,11 @@ static void doerror(const void *object, const char *s)
         fprintf(stderr, "error: %s", s);
 #endif
     }
-    else
+    else {
         pdgui_vmess("::pdwindow::logpost", "ois",
                   object, PD_ERROR, s);
+		fprintf(stderr, "%s", s);
+	}
 }
 
 static void dologpost(const void *object, const int level, const char *s)
@@ -177,8 +179,11 @@ static void dologpost(const void *object, const int level, const char *s)
 #endif
     }
     else
+	{
         pdgui_vmess("::pdwindow::logpost", "ois",
                   object, level, s);
+				  printf("%s\n", s);
+  }
 }
 
 void logpost(const void *object, int level, const char *fmt, ...)

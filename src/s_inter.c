@@ -52,6 +52,10 @@ that didn't really belong anywhere. */
 # endif
 #endif
 
+#define sys_closesocket(A) {\
+	printf("BBBBBBB %s:%d fd: %d\n", __FUNCTION__, __LINE__, A); \
+	sys_closesocket(A); \
+}
 #include "m_private_utils.h"
 
 /* colorize output, but only on a TTY */
@@ -185,7 +189,7 @@ extern int sys_addhist(int phase);
 void sys_stopgui(void);
 void sys_lockio();
 void sys_unlockio();
-static int fdp_select(fd_set *readset, struct timeval timeout, const t_fdp_manager manager);
+static int fdp_select(fd_set *readset, fd_set *errset, struct timeval timeout, const t_fdp_manager manager);
 static void sys_addsockrecvfn(t_socket* sock, t_sockrecvfn recvfn, void* arg);
 static void sys_rmsockrecvfn(t_socket* fd);
 static void gui_failed(const char* s);
@@ -238,6 +242,7 @@ static t_socket* socket_new(int fd, int preserve_boundaries, int threaded, void 
         p->sk_sktsenderr = sktsenderr_new(senderrfn, user, x);
     }
     x->sk_p = p;
+    printf("Setting socket %p %p\n", x, x->sk_p);
     return x;
 }
 
@@ -384,32 +389,37 @@ extern int sys_nosleep;
 
 // perform a select() on all the pollfds with a given manager
 // returns the number of fds that were ready, or a negative value if an error occurred.
-static int fdp_select(fd_set *readset, struct timeval timeout, const t_fdp_manager manager) {
+static int fdp_select(fd_set *readset, fd_set *errset, struct timeval timeout, const t_fdp_manager manager) {
     t_fdpoll *fp;
     int i;
     int count = 0;
     int ret;
     FD_ZERO(readset);
+    FD_ZERO(errset);
     for (fp = INTER->i_fdpoll,
         i = INTER->i_nfdpoll; i--; fp++)
     {
+		//printf("%p %d        ", fp->fdp_fd, fp->fdp_fd->sk_fd);
         t_fdp_manager fdp_manager = fp->fdp_manager;
         if(kFdpManagerAnyThread == manager || manager == fdp_manager)
         {
             FD_SET(fp->fdp_fd->sk_fd, readset);
+            FD_SET(fp->fdp_fd->sk_fd, errset);
             ++count;
         }
     }
+	//printf("<<< \n");
     if(!count)
         return 0;
-    if((ret = select(INTER->i_maxfd+1,
-        readset, NULL, NULL, &timeout)) < 0)
+    if((ret = select(INTER->i_maxfd,
+        readset, NULL, errset, &timeout)) < 0)
             perror("microsleep select");
     return ret;
 }
 
 static void callpollfn(int i)
 {
+	printf("callpollfn %p, %d\n", INTER->i_fdpoll[i].fdp_ptr, INTER->i_fdpoll[i].fdp_fd->sk_fd);
     (*INTER->i_fdpoll[i].fdp_fn)
         (INTER->i_fdpoll[i].fdp_ptr,
             INTER->i_fdpoll[i].fdp_fd);
@@ -428,7 +438,8 @@ static int sys_domicrosleep(int microsec)
     if (INTER->i_nfdpoll)
     {
         fd_set readset;
-        fdp_select(&readset, timeout, kFdpManagerAudioThread);
+        fd_set errset;
+        fdp_select(&readset, &errset, timeout, kFdpManagerAudioThread);
         INTER->i_fdschanged = 0;
         for (i = 0; i < INTER->i_nfdpoll &&
             !INTER->i_fdschanged; i++)
@@ -704,6 +715,7 @@ void sys_rmpollfn(int fd)
 
 static void sys_rmsockrecvfn(t_socket* fd)
 {
+	printf("sys_rmsockrecvfn %p\n", fd);
     sys_lockio();
     int nfd = INTER->i_nfdpoll;
     int i, size = nfd * sizeof(t_fdpoll);
@@ -714,8 +726,10 @@ static void sys_rmsockrecvfn(t_socket* fd)
     {
         if (fp->fdp_fd == fd)
         {
+			printf("REMOVED %p %d\n", fp->fdp_fd, fp->fdp_fd->sk_fd);
             while (i--)
             {
+				printf("i is %d, removing %p, replacing it with %p\n", i, fp[0].fdp_fd, fp[1].fdp_fd);
                 fp[0] = fp[1];
                 fp++;
             }
@@ -923,10 +937,13 @@ void socketreceiver_read(t_socketreceiver *x, int fd)
         {
             ret = (int)sys_recv(x->sr_sock, x->sr_inbuf + x->sr_inhead,
                 readto - x->sr_inhead, 0);
+			printf("sys_recv %p %d returned %d\n", x->sr_sock, x->sr_sock->sk_fd, ret);
             if (ret <= 0)
             {
-                if (ret < 0)
+                if (ret < 0) {
+					perror("recv");
                     sys_sockerror("recv (tcp)");
+				}
                 if (x == INTER->i_socketreceiver)
                 {
                     if (pd_this == &pd_maininstance)
@@ -996,9 +1013,15 @@ void socketreceiver_set_fromaddrfn(t_socketreceiver *x,
     }
 }
 
+#undef sys_closesocket
 void sys_closesocket(int sockfd)
 {
     socket_close(sockfd);
+}
+
+#define sys_closesocket(A) {\
+	printf("BBBBBBB %s:%d fd: %d\n", __FUNCTION__, __LINE__, A); \
+	sys_closesocket(A); \
 }
 
 /* ---------------------- sending messages to the GUI ------------------ */
@@ -1016,9 +1039,9 @@ static void gui_failed(const char* s)
 
 static void gui_senderrfn(void* ptr, t_socket* sock, int err)
 {
-    char m[] = "GUI failed while sending: %d\n";
-    char s[sizeof(m) + 5];
-    snprintf(s, sizeof(s), m, err);
+    char m[] = "GUI failed while sending: %d on fd %d\n";
+    char s[sizeof(m) + 10];
+    snprintf(s, sizeof(s), m, err, sock->sk_fd);
     gui_failed(s);
 }
 

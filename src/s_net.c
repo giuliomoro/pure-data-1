@@ -301,6 +301,10 @@ int socket_connect(int socket, const struct sockaddr *addr,
         #endif
             return -1;
         }
+        if (FD_ISSET(socket, &writefds))
+		{
+			printf("SOCKET IS WRITEABLE\n");
+		}
     }
     /* done, set blocking again */
     socket_set_nonblocking(socket, 0);

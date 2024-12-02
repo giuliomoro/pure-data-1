@@ -16,6 +16,14 @@
 #include <errno.h>
 #endif
 
+#define sys_closesocket(A) {\
+	printf("sys_closesocket from %s:%d  fd: %d\n", __FUNCTION__, __LINE__, A); \
+	sys_closesocket(A); \
+}
+#define socketreceiver_new(A,B,C,D) \
+	(printf("socketreceiver_new from %s:%d\n", __FUNCTION__, __LINE__), \
+	socketreceiver_new(A,B,C,D))
+
 /* print addrinfo lists for debugging */
 /* #define PRINT_ADDRINFO */
 
@@ -389,6 +397,7 @@ static void netsend_connect(t_netsend *x, t_symbol *s, int argc, t_atom *argv)
                                     x->x_timeout) < 0)
             {
                 sys_sockerror("connecting stream socket");
+				printf("SYS SOCKERRR no connect\n");
                 sys_closesocket(sockfd);
                 freeaddrinfo(ailist);
                 /* output 0 on connection failure so the user
@@ -396,6 +405,7 @@ static void netsend_connect(t_netsend *x, t_symbol *s, int argc, t_atom *argv)
                 outlet_float(x->x_obj.ob_outlet, 0);
                 return;
             }
+			printf("SOCKET %d has connected(???)\n", sockfd);
         }
 
         /* this addr worked */
@@ -619,6 +629,7 @@ static void netreceive_send_error(void* x, t_socket* sock, int err)
 static void netreceive_connectpoll(t_netreceive *x)
 {
     int fd = accept(x->x_ns.x_sockfd->sk_fd, 0, 0);
+	printf("ntereceive connectpoll %d\n", fd);
     if (fd < 0) post("netreceive: accept failed");
     else
     {
