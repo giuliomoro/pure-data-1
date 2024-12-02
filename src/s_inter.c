@@ -962,11 +962,12 @@ void socketreceiver_read(t_socketreceiver *x, int fd)
                 }
                 else
                 {
+					printf(" IF SR NOTIFIER %p for %d: sock is %p\n", x->sr_notifier, fd, x->sr_sock);
+                    sys_unregistersocket(x->sr_sock);
+                    sys_closesocket(fd);
+                    x->sr_sock = NULL;
                     if (x->sr_notifier)
                         (*x->sr_notifier)(x->sr_owner, fd);
-                    sys_unregistersocket(x->sr_sock);
-                    x->sr_sock = NULL;
-                    sys_closesocket(fd);
                 }
             }
             else
