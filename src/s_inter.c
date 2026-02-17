@@ -3070,7 +3070,16 @@ void s_inter_freepdinstance(void)
 #ifdef PDINSTANCE
 static pthread_rwlock_t sys_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 #else /* PDINSTANCE */
-static pthread_mutex_t sys_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t* sys_mutex_get() {
+	static int inited = 0;
+	static pthread_mutex_t storage;
+	if(!inited) {
+		inited = 1;
+		pthread_mutex_init(&storage, NULL);
+	}
+	return &storage;
+}
+#define sys_mutex *sys_mutex_get()
 #endif /* PDINSTANCE */
 #endif /* PDTHREADS */
 
@@ -3231,18 +3240,26 @@ void messqueue_dispatch(void) {}
 #endif /* PDTHREADS */
 
 #ifdef THREADED_IO
-static pthread_mutex_t sys_mutexio = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t* sys_mutexio_get() {
+	static int inited = 0;
+	static pthread_mutex_t storage;
+	if(!inited) {
+		inited = 1;
+		pthread_mutex_init(&storage, NULL);
+	}
+	return &storage;
+}
 
 void sys_lockio()
 {
-    int ret = pthread_mutex_lock(&sys_mutexio);
+    int ret = pthread_mutex_lock(sys_mutexio_get());
     if(ret)
         printf("lockio: %d\n", ret);
 }
 
 void sys_unlockio()
 {
-    int ret = pthread_mutex_unlock(&sys_mutexio);
+    int ret = pthread_mutex_unlock(sys_mutexio_get());
     if(ret)
         printf("unlockio: %d\n", ret);
 }
