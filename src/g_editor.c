@@ -2340,7 +2340,7 @@ static void canvas_doclick(t_canvas *x, int xpix, int ypix, int mod, int doit)
     t_rtext *rtext;
 
     if(!x->gl_editor) {
-        bug("editor");
+        // bug("editor");
         return;
     }
 
@@ -3074,7 +3074,7 @@ void canvas_mouseup(t_canvas *x,
 #endif
     if (!x->gl_editor)
     {
-        bug("editor");
+        // bug("editor");
         return;
     }
 
@@ -3361,7 +3361,7 @@ void canvas_motion(t_canvas *x, t_floatarg xpos, t_floatarg ypos,
     int mod = fmod;
     if (!x->gl_editor)
     {
-        bug("editor");
+        // bug("editor");
         return;
     }
     glist_setlastxy(x, xpos, ypos);
